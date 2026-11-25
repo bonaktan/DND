@@ -3,16 +3,16 @@
  */
 
 plugins {
-    id("buildlogic.java-application-conventions")
+    application
 }
 
 dependencies {
-    implementation("org.apache.commons:commons-text")
+
 }
 
 application {
     // Define the main class for the application.
-    mainClass = "org.AngelosAura.app.App"
+    mainClass = "org.AngelosAura.app.Main"
 }
 
 sourceSets {
