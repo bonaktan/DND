@@ -1,0 +1,11 @@
+{
+  "files.exclude": {
+    "**/.gradle": true,
+    "**/.git": true,
+    "**/build/": true,
+    "buildSrc": true,
+    "gradle": true,
+    "gradle.properties": true,
+    "gradlew*": true,
+  }
+}
