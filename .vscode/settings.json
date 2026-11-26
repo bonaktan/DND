@@ -6,6 +6,7 @@
     "buildSrc": true,
     "gradle": true,
     "gradle.properties": true,
-    "gradlew*": true,
-  }
+    "gradlew*": true
+  },
+  "java.configuration.updateBuildConfiguration": "interactive"
 }

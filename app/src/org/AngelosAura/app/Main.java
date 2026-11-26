@@ -11,7 +11,7 @@ public class Main extends ApplicationAdapter {
     private SpriteBatch batch;
     private BitmapFont font;
 
-    public static void main(String[] args) {
+    public static void main() {
         Lwjgl3ApplicationConfiguration config = new Lwjgl3ApplicationConfiguration();
         config.setTitle("libGDX + LWJGL3 Demo");
         config.setWindowedMode(480, 270);
@@ -39,5 +39,9 @@ public class Main extends ApplicationAdapter {
     public void dispose() {
         font.dispose();
         batch.dispose();
+    }
+
+    public int test() {
+        return 2;
     }
 }

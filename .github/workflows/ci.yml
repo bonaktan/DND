@@ -1,0 +1,111 @@
+name: CI and release
+
+on:
+  push:
+    branches: [main]
+    tags: ['[0-9]*.[0-9]*.[0-9]*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Lint, format check, and test
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.ref_type == 'branch' && github.event.deleted == false) ||
+      (github.ref_type == 'tag' && github.event.created == true)
+    runs-on: ubuntu-latest
+    outputs:
+      release-commit: ${{ steps.tag.outputs.commit }}
+      prerelease: ${{ steps.tag.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: ${{ github.ref_type == 'tag' && '0' || '1' }}
+          persist-credentials: false
+
+      - name: Validate release tag
+        if: github.ref_type == 'tag'
+        id: tag
+        shell: bash
+        run: |
+          number='(0|[1-9][0-9]*)'
+          identifier="($number|[0-9]*[A-Za-z-][0-9A-Za-z-]*)"
+          semver="^$number\.$number\.$number(-$identifier(\.$identifier)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$"
+          if [[ ! $GITHUB_REF_NAME =~ $semver ]]; then
+            echo "::error::Release tags must be bare SemVer 2.0.0 versions, such as 1.2.3."
+            exit 1
+          fi
+
+          commit=$(git rev-parse HEAD)
+          if ! git merge-base --is-ancestor "$commit" origin/main; then
+            echo "::error::The tagged commit must already be reachable from main."
+            exit 1
+          fi
+
+          prerelease=false
+          if [[ ${GITHUB_REF_NAME%%+*} == *-* ]]; then
+            prerelease=true
+          fi
+          {
+            echo "commit=$commit"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Run Java lint, formatting checks, and JUnit tests
+        run: ./gradlew --no-daemon :app:check
+
+      - name: Package desktop app
+        if: steps.tag.outputs.commit != ''
+        run: |
+          ./gradlew --no-daemon :app:distZip
+          mv app/build/distributions/app.zip DND.zip
+
+      - uses: actions/upload-artifact@v7
+        if: steps.tag.outputs.commit != ''
+        with:
+          name: desktop-distribution
+          path: DND.zip
+          if-no-files-found: error
+          overwrite: true
+
+  release:
+    name: Publish GitHub release
+    needs: verify
+    if: github.event_name == 'push' && github.ref_type == 'tag' && needs.verify.outputs.release-commit != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: desktop-distribution
+
+      - name: Publish verified distribution
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAGGED_COMMIT: ${{ needs.verify.outputs.release-commit }}
+          PRERELEASE: ${{ needs.verify.outputs.prerelease }}
+        run: |
+          if [[ $(git rev-parse --verify "${GITHUB_REF}^{commit}") != "$TAGGED_COMMIT" ]] ||
+             ! git merge-base --is-ancestor "$TAGGED_COMMIT" HEAD; then
+            echo "::error::The tag changed or is no longer reachable from main."
+            exit 1
+          fi
+
+          gh release create "$GITHUB_REF_NAME" DND.zip \
+            --verify-tag --generate-notes --prerelease="$PRERELEASE"

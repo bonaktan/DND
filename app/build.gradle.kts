@@ -11,12 +11,21 @@ repositories {
 
 plugins {
     application
+    id("com.diffplug.spotless") version "8.12.0"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
 }
 
 dependencies {
     implementation("com.badlogicgames.gdx:gdx:$gdxVersion")
     implementation("com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion")
     runtimeOnly("com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop")
+    testImplementation("org.junit.jupiter:junit-jupiter:6.0.1")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.0.1")
 
     constraints {
         implementation("org.lwjgl:lwjgl:$lwjglVersion")
@@ -25,6 +34,20 @@ dependencies {
         implementation("org.lwjgl:lwjgl-openal:$lwjglVersion")
         implementation("org.lwjgl:lwjgl-opengl:$lwjglVersion")
         implementation("org.lwjgl:lwjgl-stb:$lwjglVersion")
+    }
+}
+
+tasks.test {
+    useJUnitPlatform()
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.addAll(listOf("-Xlint:all", "-Werror"))
+}
+
+spotless {
+    java {
+        googleJavaFormat().aosp()
     }
 }
 
