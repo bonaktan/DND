@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+java_sources=(':(glob)app/src/**/*.java' ':(glob)app/test/**/*.java')
+if git diff --cached --quiet --no-renames --diff-filter=ACMT -- "${java_sources[@]}"; then
+    exit 0
+else
+    status=$?
+    if [[ $status != 1 ]]; then
+        exit "$status"
+    fi
+fi
+
+# Format an index snapshot so unstaged edits never enter the formatter.
+temp_dir=$(mktemp -d)
+trap 'rm -rf -- "$temp_dir"' EXIT
+snapshot="$temp_dir/staged"
+mkdir "$snapshot"
+
+git diff --cached --name-only -z --no-renames --diff-filter=ACMT -- "${java_sources[@]}" > "$temp_dir/files"
+git checkout-index --all --prefix="$snapshot/"
+
+files=()
+targets=()
+formatter_root=$(cd "$snapshot" && (pwd -W 2>/dev/null || pwd -P))
+while IFS= read -r -d '' file; do
+    if [[ ! -f "$snapshot/$file" || -L "$snapshot/$file" ]]; then
+        continue
+    fi
+    files+=("$file")
+    targets+=("$formatter_root/$file")
+done < "$temp_dir/files"
+
+if [[ ${#files[@]} == 0 ]]; then
+    exit 0
+fi
+
+(
+    cd "$snapshot"
+    # The IDE hook cannot represent commas in filenames. Format the isolated snapshot in that case.
+    if [[ ${targets[*]} == *,* ]]; then
+        sh ./gradlew :app:spotlessJavaApply
+        exit
+    fi
+    IFS=,
+    sh ./gradlew :app:spotlessJavaApply "-PspotlessIdeHook=${targets[*]}"
+)
+
+patch="$temp_dir/format.patch"
+git_dir=$(git rev-parse --absolute-git-dir)
+index_file=$(git rev-parse --path-format=absolute --git-path index)
+GIT_INDEX_FILE="$index_file" git -C "$snapshot" --git-dir="$git_dir" --work-tree="$snapshot" \
+    --literal-pathspecs diff --no-ext-diff --no-textconv --no-color \
+    --src-prefix=a/ --dst-prefix=b/ --unified=3 --binary -- "${files[@]}" > "$patch"
+if [[ -s "$patch" ]]; then
+    # Applying to both the worktree and index fails if a file has unstaged changes.
+    if ! git apply --index --whitespace=nowarn "$patch"; then
+        echo 'Could not stage formatting. Resolve unstaged edits in the affected files and retry.' >&2
+        exit 1
+    fi
+fi
