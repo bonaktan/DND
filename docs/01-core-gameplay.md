@@ -45,16 +45,31 @@ The system shall do the following:
 - [Assets] Pixel art 16x16 with 8bit color palette
 - [Assets] It will follow the 80s - 90s aesthetic or retro
 
-### Story
-In the vast universe of cosmos, there's a remote village called Stirling. They live a pretty peaceful life, until one villager discovers the ring of King in Yellow. It was in the scriptures of Dsaa that when the village has summoned the King in Yellow, this ring will grant every wish that the village can only imagine. May it be gold or power, once you've successfully summoned the King, nothing can stop them. And so every person in the village had tried to summoned him. Scavenging every piece of evidence and way to summon the King in Yellow.
+### Storyline
 
-In that same old village, lived a boy named {idk yet}, he lived yet a simple life, he was given a necklace by his late grandfather. Before he died, he told {the boy} that when the time comes, something will arrive. Nobody knows who or what will happen, even the scriptures of Dsaa.
+In the vast universe of cosmos, there's a remote village called Stirling. People in the village lived a pretty peaceful life. One day, a villager discovers the legend of the King in Yellow. It was in the scriptures of Dsaa that when the village has successfully summoned the King in Yellow, they could wish for anything they could ask for, whether money or power, nothing will stop you and the King will grant it. As soon as the village knew that fact, they all started to find a way to summon this powerful King in Yellow, even going to the point of worshipping the King. 
 
-3 years later, the boy was wondering around the citadel when he bumped into this mysterious looking woman who told him the truth about the King in Yellow: turns out, the scriptures of Dsaa left out a lot of details about him. According to the scriptures, it is true that the ring will grant anything the village wishes in an instant. But it was never disclosed that when you summon the King in Yellow, something big will be lost, forever. But a special fruit named Vicara will satisfy the King's hunger, but it can only be found in the deep forest of Elderwood, inside a castle named Glasfryn. It's guarded by multiple golems, snakes, and hostile thing you could think of.
+In the same old village lived a boy named Raven, he lived yet a simple life. Compared to everyone in the village, he's not obsessed with this summoning mission for the King in Yellow. He finds it rather useless as there's no proof that the King in Yellow does exist, but he does go in various summoning circles that he's invited to. On his coming of age, his late grandfather gave him a necklace. His grandfather tells him to take good care of this necklace, as this necklace is his key of success in life. Raven did not believe his grandfather, but he did took good care of the necklace. It was shiny, and it almost seems like it has no colors.
 
-And so, the woman and the man tried ventured to find the Vicara fruit. On their way, the woman and the man stumbled into thousands of enemies, until they reach the area where the Vicara is supposed to be in. But it was not there, just a hole fitting specifically for the man. The woman encouraged the man to go in. He went in only to be trapped inside. There, stood a giant king, the King in Yellow.
+3 years later, the boy was wondering around the citadel when he bumped into this ominous lookng necromancer named Aurienne, who told him the truth about the King in Yellow: turns out, the scriptures of Dsaa left out a lot of details about the King. It is true that when you summon the King in Yellow, the King will grant you anything you'd wish for, but you have to sacrifice something great for the King to give you what you want. That or the Viscara Fruit, this fruit is said to be so great that the King will never ask for anything after it ate the fruit.
 
-While fighting the king in yellow, he saw the woman enter the battlefield, he was relieved thinking that someone will help him out. Only for the woman to betray him and tries to stab him. While they were fighting, the king in yellow laughed.
+Only that the Viscara fruit is buried deep into the forest of Elderwood and in the Glasfryn dungeon. This could mean that throughout your journey to find this fruit, you might face your death before you could even touch it.
 
-"How foolish you mortals can be. {The woman} works for me, and once I get that necklace of yours, I'll be able to rule to world."
+And so, Raven and Aurienne ventured into the journey of finding the Viscara fruit. On their way, Aurienne shared many stories and secrets with Raven. The man is in awe with how much experience Aurienne seems to have. Along their journey, they promised that they won't leave each other.
 
+Althroughout their journey, the two faced many enemies and brain-melting puzzles. Upon reaching the place where the Viscara fruit is, the two of them we trapped into the lair of the King in Yellow who revealed the truth, Aurienne is working for the King, and now the King shall defeat Raven.
+
+Aurienne started to attack Raven, with him dodging her attack, he asks Aurienne why she did this. She revealed that the necklace he has is the last gemstone that the King needs to become powerful. There was never a viscara fruit, she just lured Raven into the lair so that the King could grant her wishes.
+
+Raven was able to defeat Aurienne, but not the King in Yellow. In the end, the King in Yellow obtains the amethyst on his necklace and places it on the last hole on his crown. The crown gravitates towards the King and lands on its head. The King ascends to a different color; yellow, white, then blue. The most powerful color. Now, the King in Yellow is as big as the cosmos. With a snap, the King destroys all of cosmos.
+
+And thus completing the cycle: in nothingness, there is something, that something turns everything into nothing.
+
+### Story Specifications
+- At any point in the story shall not mention the King as a person.
+- The cycle is static, the Scriptures of Dsaa has it inscribed all along. The King was never supposed to be defeated
+- Aurienne is **not** an ally
+- Aurienne shall not appear as a character while Raven is venturing. She can only show as a dialog or subtitle.
+- Aurienne will only appear on the 1v1 battle.
+- Aurienne can summon dead enemies that they have fought.
+- The King in Yellow has all the skills that the enemies they fought have.
