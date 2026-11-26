@@ -2,23 +2,23 @@
 
 **Status:** Partially accepted
 **Date:** November 26, 2026
-**Scope:** Application architecture, development infrastructure, runtime execution, rendering, and resource management.
+**Scope:** Application architecture, development infrastructure, runtime execution, rendering, and game content.
 **Use of AI Declaration:** AI was used to create this ADR with guidance from the Technical Lead and to revise it against the repository.
 
 ## 1. Context
 
-DND is being developed as a Java-based, two-dimensional desktop RPG with a retro graphical presentation. The current application is a libGDX desktop demo that opens a window and draws “Hello World!”.
+DND is being developed as a Java RPG. The current entry point is a command-line stub that prints “Hello World!”.
 
-The architecture prioritizes simplicity, maintainability, and reuse of libGDX infrastructure. As gameplay is added, keep runtime coordination, application state, rendering, and domain logic separate where that makes the code easier to maintain and test.
+The game needs dungeon generation, inventory, shortest paths, enemy prioritization, and save/load. Asset designers and gameplay balancers must be able to change art, text, encounters, and game balance without editing Java or recompiling. [Core gameplay requirements](../01-core-gameplay.md)
 
 ## 2. Technology Stack
 
 | Technology | Role in the project | Status |
 |---|---|---|
 | Java | Primary programming language | Required |
-| libGDX 1.14.2 | Application lifecycle and rendering | Accepted and configured |
-| LWJGL3 | Desktop backend through libGDX, with LWJGL dependencies constrained to 3.4.3 | Configured |
-| OpenGL | Graphics API used through the desktop backend | In use |
+| libGDX | Desktop GUI and rendering framework | Accepted |
+| LWJGL3 | Desktop backend for libGDX | Accepted |
+| OpenGL | Graphics API used by the desktop backend | Accepted |
 | Gradle 9.7.1 | Wrapper, build, dependency management, and application distribution | Configured |
 | Git and GitHub | Version control and the configured `origin` remote | In use |
 | JUnit Jupiter 6.0.1 | Automated tests run on the JUnit Platform | Configured |
@@ -30,78 +30,102 @@ The repository was scaffolded with `gradle init`. The build uses Kotlin DSL and 
 
 ## 3. Application Architecture
 
-DND runs as a single desktop application. The Gradle root project includes one application subproject, `app`, which contains both the desktop entry point and the application code. The entry point, lifecycle callbacks, drawing, and graphics resource ownership currently live in `org.AngelosAura.app.Main`.
+DND currently has one Gradle subproject, `app`. Keep one subproject and give each part of the game its own Java package as it is introduced.
 
-Keep the single-application layout as the implementation baseline. Introduce packages and classes when gameplay gives them distinct responsibilities, such as simulation, rendering, input, or resources. Prefer composition and reuse existing libGDX abstractions.
+| Package | Responsibility |
+|---|---|
+| `runtime` | Handles application startup, input, update timing, and starting or restoring a game session. |
+| `game` | Owns the game state and rules. Contains dungeon generation, movement and pathfinding, enemy prioritization, combat, and inventory. Runs in plain Java without a window or file access. |
+| `presentation` | Draws the world, menus, and player status. Reads gameplay state and sends player actions through the runtime. |
+| `content` | Loads and validates authored files and converts them into typed, read-only definitions. Gameplay receives Java values such as enemy stats and map layouts. Presentation resolves sprite and sound IDs. |
+| `save` | Reads and writes versioned snapshots of player progress in a writable user directory. The game session owns the state after it is restored. |
+
+In the proposed design, the runtime loads the content and passes the definitions to a new game session. During play, it turns input into commands such as move or attack. Gameplay decides whether a command is valid and is the only part that changes game state. Presentation reads and displays the result. The course algorithms can be tested directly with JUnit.
 
 ## 4. Runtime Architecture
 
-libGDX manages the runtime through `Lwjgl3Application` and calls the lifecycle methods implemented by `Main`, which extends `ApplicationAdapter`. The launcher opens a non-resizable 480 × 270 window with vertical sync enabled. Each `render()` callback draws the demo frame. The window size is a demo setting, and vertical sync leaves frame pacing to the display and backend.
-
-A fixed-timestep gameplay loop remains proposed. The proposal uses an accumulator with 60 simulation updates per second, or about 16.67 ms per update, and a separate rendering target of 60 frames per second. It would retain input events until a simulation update consumes them and bound elapsed time and catch-up work after stalls. Render interpolation is deferred until needed.
+Use a fixed timestep for gameplay simulation. Each update advances the game by the same amount of simulation time, and the interface can refresh independently. Queue input until the next update can consume it, and limit catch-up work after stalls. The update rate is still open.
 
 ## 5. Threading and State Management
 
-The demo creates, uses, and disposes graphics resources in the libGDX lifecycle callbacks. For gameplay, the proposed model keeps authoritative state mutations, simulation, and rendering on the libGDX application thread. Any future background workers should hand results back to that thread before they are applied to application state.
+Keep gameplay updates on one thread. If background workers are introduced later, pass their results back to the game session before applying any change to game state.
 
 ## 6. Rendering Architecture
 
-`Main.render()` clears the screen and draws text with libGDX's `SpriteBatch` and `BitmapFont`. The demo uses the batch's default projection.
-
-The proposed gameplay renderer uses libGDX's `OrthogonalTiledMapRenderer`, `OrthographicCamera`, and `FitViewport`, with nearest-neighbor texture filtering and `Animation` and `TextureRegion` for sprite animation. The proposal calls for an explicit layer order and Y-axis sorting by ground-contact position where depth ordering is needed. Rendering should read authoritative gameplay state. A dedicated renderer can take ownership once the game has world rendering to coordinate.
+Build the desktop GUI with libGDX. Use its LWJGL3 backend to open the window and render through OpenGL. Keep drawing in the presentation layer, use nearest-neighbor scaling for pixel art, and define the drawing order for map layers and sprites.
 
 ## 7. Coordinate System
 
-The demo draws its text at `(24, 150)` using the batch's default projection. For gameplay, the coordinate proposal calls for a Y-up world with a bottom-left origin, one logical pixel per world unit, floating-point entity positions, integer tile coordinates, and a tile renderer unit scale of 1.0. World, tile, and screen coordinates should have explicit conversions when those systems are introduced.
+Use integer tile coordinates for the dungeon grid and pathfinding. Keep conversions from game coordinates to screen coordinates in the presentation layer.
 
-## 8. Asset Management
+## 8. Game Content and Assets
 
-`Main.create()` creates a single `SpriteBatch` and a default `BitmapFont`, and sets the font scale to 2. The callbacks reuse these objects across frames and release them in `Main.dispose()`. The root `assets/` directory is empty and has no Gradle resource configuration.
+Keep designer-controlled values and player-facing strings under `assets/`. JSON definitions hold player starting stats, enemy stats, abilities, items, dungeon settings, and encounter weights. A text catalog holds names, dialogue, and UI labels. Art and audio are referenced by stable IDs, so an asset can change without updating every enemy or item that uses it.
 
-The proposed gameplay asset strategy uses libGDX's `AssetManager` for shared assets and map-specific loading and unloading. The proposal favors texture and animation reuse, texture atlases where compatible, and explicit disposal. Resource loading should stay out of render and simulation loops. Advanced asset streaming is deferred pending a measured need.
+Java defines what a rule does. For example, a balancer can create a new ability from supported damage and poison effects and set the poison duration in data. Adding an effect that rewinds a turn requires a new rule in Java. For the first release, support the behaviors and effects needed by the game's actual encounters.
+
+An enemy file such as `assets/data/enemies/crypt-golem.json` could look like this.
+
+```json
+{
+  "id": "crypt-golem",
+  "nameKey": "enemy.crypt_golem.name",
+  "spriteId": "crypt-golem",
+  "maxHp": 36,
+  "behavior": "pursue",
+  "abilities": ["slam"]
+}
+```
+
+A balancer can copy that file, give the copy a new ID, tune its stats, and add it to a dungeon's encounter pool. An artist can replace the image or update the sprite mapping. Renaming the golem only requires editing its text entry. Keep existing IDs stable when changing a display name, stat, or filename.
 
 ## 9. Project Organization
 
+Keep the existing `app/src` and `app/test` source sets and the `org.AngelosAura.app.Main` entry point. The proposed layout shows the directories contributors will use when gameplay and content are added.
+
 ```text
-DND/
-├── app/
-│   ├── build.gradle.kts
-│   ├── src/org/AngelosAura/app/Main.java
-│   └── test/org/AngelosAura/app/MainTest.java
-├── assets/
-├── docs/
-│   └── adr/
-│       └── 0001-technical-architecture
-├── gradle/
-│   ├── libs.versions.toml
-│   └── wrapper/
-├── gradle.properties
-├── settings.gradle.kts
-├── gradlew
-├── gradlew.bat
-├── README.md
-├── run.sh
-└── run.bat
+app/
+  src/org/AngelosAura/app/
+    Main.java
+    runtime/
+    game/
+      world/           dungeon generation, movement, and shortest paths
+      combat/          attacks and enemy prioritization
+      inventory/
+    presentation/
+    content/
+    save/
+  test/                mirrors the source packages
+assets/
+  data/
+    player.json        starting stats and abilities
+    enemies/
+    abilities/
+    items/
+    dungeons/          generation settings and encounter pools
+  text/en.json
+  art/                 sprite mappings and artwork
+  audio/
+  maps/                authored maps, if used
 ```
 
-The Java source sets are `app/src` and `app/test`. The Gradle application plugin uses `org.AngelosAura.app.Main` as its entry point and sets JVM flags for native access and the `jdk.internal.misc` export. The launch helpers are `run.sh` on Linux and `run.bat` on Windows. Their build command runs Gradle's `build` and `:app:installDist` tasks. Their run command launches the installed application from `app/build/install/app/bin/`.
+## 10. Editing Content and Loading Saves
 
-## 10. Current Class Responsibilities
+Package the editable `assets/` folder in both the installed app and the release ZIP. Resolve it relative to the installation so launchers work from any working directory. Designers can edit the installed files, restart to try their changes, and bring accepted edits back into the repository's `assets/` folder. Keep field descriptions and examples beside the content.
 
-| Class | Responsibility |
-|---|---|
-| `Main` | Configures and launches LWJGL3, implements the libGDX lifecycle, and owns the demo's rendering resources |
-| `MainTest` | Runs a JVM-only JUnit test that constructs `Main` and checks that `Main.test()` returns 2 |
+Use the same validator at startup and in `:app:check`. Catch invalid values, duplicate IDs, unsupported behaviors or effects, and missing references before creating a session. Name the file, entry, and field in each error so the contributor can fix it.
 
-Introduce dedicated classes for game timing, input, rendering, and assets as those responsibilities emerge.
+Save player progress, inventory, and the generated dungeon layout separately from authored definitions. Use stable content IDs when a save refers to an enemy or item. If a required ID was removed, report it and preserve the save file. For balance changes, load the current definition and cap saved current HP at the new maximum.
 
 ## 11. Performance and Resource Management
 
-Performance optimization will follow a measurement-driven approach. The demo already reuses its rendering resources across frames and disposes them on shutdown. As gameplay is added, keep blocking file operations and avoidable allocations out of frequent updates, then measure frame duration, update duration, and resource use before adding optimizations such as viewport culling or object pooling. Validate performance and compatibility on the lowest-specification supported development machine once the hardware target is defined.
+Load resources at startup or when entering a map and reuse them during play. Measure gameplay update time and resource use before adding optimizations. Check performance on the lowest-specification supported machine once the hardware target is defined.
 
 ## 12. Testing and Observability
 
-Gradle runs tests from `app/test` with JUnit Jupiter on the JUnit Platform. The existing test exercises a constant-return method without starting the desktop backend. Future game logic should remain testable independently of graphical presentation where practical.
+Gradle runs JUnit tests from `app/test`. Test dungeon generation, pathfinding, enemy priority, combat, and inventory without opening a window. Use small content fixtures to test validation and save loading.
+
+For the first playable slice, connect one generated room, one enemy, one attack, one sprite, and one name. Verify in the installed build that a designer can edit HP, replace the sprite, change the name, and add a second enemy to the encounter pool. Check that an invalid sprite reference identifies the file and field to fix.
 
 Runtime diagnostics are proposed for frames and updates per second, frame and simulation duration, heap usage, active object counts, and rendering statistics. Keep diagnostics separate from authoritative gameplay logic.
 
@@ -109,8 +133,6 @@ Runtime diagnostics are proposed for frames and updates per second, frame and si
 
 | Technology or approach | Disposition |
 |---|---|
-| Custom Java AWT engine | Replaced by libGDX |
-| JavaFX rendering | Not selected |
 | External ECS framework | Deferred |
 | Box2D physics engine | Deferred |
 | Dependency injection framework | Not required |
@@ -131,7 +153,7 @@ Deferred technologies may be reconsidered if subsequent technical requirements j
 3. **Single source of truth.** Give authoritative application state a clear owner.
 4. **Predictable execution order.** Define the order of simulation operations when gameplay is introduced.
 5. **Resource reuse.** Share resources where practical and dispose of them when their owner shuts down.
-6. **Framework reuse.** Use suitable libGDX abstractions.
+6. **Reuse.** Prefer existing libraries when they meet the project's needs.
 7. **Incremental complexity.** Introduce abstractions and subsystems when a concrete requirement calls for them.
 8. **Measurement-driven optimization.** Base performance changes on observable evidence.
 9. **Maintainability.** Favor readable implementations.
@@ -139,12 +161,12 @@ Deferred technologies may be reconsidered if subsequent technical requirements j
 
 ## 15. Consequences
 
-The single subproject builds, tests, and packages the desktop application through one Gradle configuration. It currently owns both desktop initialization and application code. Using libGDX reduces the lifecycle and rendering code the project has to maintain and ties the application to supported libGDX backends.
+One Gradle subproject keeps the build and release process together. The package boundaries let gameplay rules run independently of the desktop backend. Editable content adds a file format and an ID convention that code and content authors share. Validation catches mistakes before they reach a playtest or release.
 
-If adopted, fixed-timestep simulation will require timing and input buffering. A dedicated world renderer will need an explicit draw order, and preloading shared assets will add startup work and increase memory use.
+Fixed-timestep simulation requires timing and input buffering. A dedicated world renderer will need an explicit draw order, and preloading shared assets will add startup work and increase memory use.
 
 ## 16. Decision Status
 
-Java is required, and libGDX is the accepted game development framework. The current Gradle layout, LWJGL3 desktop launcher, rendering demo, and JUnit setup describe the repository baseline. The gameplay timing, rendering, coordinate, and asset-management proposals remain subject to review.
+Java is required. Fixed-timestep simulation and a desktop GUI using libGDX, LWJGL3, and OpenGL are accepted. The current baseline uses one Gradle app, a command-line entry point, and JUnit for tests. The package layout and editable content workflow are proposed. The simulation update rate remains open.
 
 The game virtual resolution, tile and sprite dimensions, and camera behavior remain undecided. Hardware compatibility and gameplay performance still need validation.

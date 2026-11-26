@@ -62,6 +62,21 @@ jobs:
       - name: Run Java lint, formatting checks, and JUnit tests
         run: ./gradlew --no-daemon :app:check
 
+      - name: Generate Javadoc
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: ./gradlew --no-daemon :app:javadoc
+
+      - name: Generate Wiki API reference
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: python3 .github/scripts/javadoc-to-wiki.py app/build/docs/javadoc app/build/API-Reference.md
+
+      - uses: actions/upload-artifact@v7
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: javadoc-wiki
+          path: app/build/API-Reference.md
+          if-no-files-found: error
+
       - name: Package desktop app
         if: steps.tag.outputs.commit != ''
         run: |
@@ -75,6 +90,58 @@ jobs:
           path: DND.zip
           if-no-files-found: error
           overwrite: true
+
+  publish-javadoc:
+    name: Publish Javadoc to the Wiki
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: javadoc-wiki
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: javadoc-wiki
+
+      - name: Update Wiki API reference
+        shell: bash
+        env:
+          WIKI_TOKEN: ${{ github.token }}
+          GIT_TERMINAL_PROMPT: '0'
+        run: |
+          authorization=$(printf 'x-access-token:%s' "$WIKI_TOKEN" | base64 -w0)
+          echo "::add-mask::$authorization"
+          export WIKI_AUTHORIZATION="Authorization: Basic $authorization"
+          repo_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+          git_auth=(git "--config-env=http.$GITHUB_SERVER_URL/.extraheader=WIKI_AUTHORIZATION")
+
+          main_head=$("${git_auth[@]}" ls-remote "$repo_url.git" "$GITHUB_REF")
+          if [[ "${main_head%%$'\t'*}" != "$GITHUB_SHA" ]]; then
+            echo "Skipping Wiki publication because main has moved."
+            exit 0
+          fi
+
+          if ! "${git_auth[@]}" clone --depth 1 "$repo_url.wiki.git" wiki; then
+            echo "::error::Could not clone the Wiki. Enable it and create its first page in GitHub if it is empty."
+            exit 1
+          fi
+
+          page=wiki/API-Reference.md
+          if [[ -e "$page" ]] && ! grep -Fxq '<!-- Generated from Javadoc. -->' "$page"; then
+            echo "::error::The Wiki already has a hand-written API Reference page."
+            exit 1
+          fi
+          cp API-Reference.md "$page"
+          git -C wiki add -- API-Reference.md
+          if git -C wiki diff --cached --quiet; then
+            exit 0
+          fi
+          git -C wiki -c 'user.name=github-actions[bot]' \
+            -c 'user.email=41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -m "Update Javadoc API reference"
+          "${git_auth[@]}" -C wiki push
 
   release:
     name: Publish GitHub release
