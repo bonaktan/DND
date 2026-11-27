@@ -12,6 +12,12 @@ plugins {
     id("com.diffplug.spotless") version "8.12.0"
 }
 
+version = "0.1.0"
+
+tasks.register("printVersion") {
+    doLast { println(project.version) }
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(25)
@@ -80,6 +86,10 @@ distributions {
             }
         }
     }
+}
+
+tasks.named<Zip>("distZip") {
+    archiveVersion = ""
 }
 
 tasks.named<JavaExec>("run") {

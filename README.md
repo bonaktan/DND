@@ -25,7 +25,7 @@ The hook runs Spotless on staged Java sources and stages any formatting fixes. I
 
 GitHub Actions runs Java compiler linting, Spotless formatting checks, and JUnit tests on Ubuntu, Windows, and macOS for pushes to `main`, pull requests, and release tags. Windows and macOS also build the desktop distribution in CI. Run the checks locally with `./gradlew :app:check` and apply Java formatting with `./gradlew :app:spotlessApply`. CI uses JDK 25.
 
-To release, push a new SemVer 2.0.0 tag such as `1.2.3` on a commit already reachable from remote `main`. Use the version as the tag name without a `v` prefix.
+To release, set `version` in `app/build.gradle.kts` to a SemVer 2.0.0 version and commit it to `main`. Push a matching tag without a `v` prefix on a commit already reachable from remote `main`. CI rejects tags that do not match the Gradle version. For example, if the version is `1.2.3`:
 
 ```sh
 git fetch origin main

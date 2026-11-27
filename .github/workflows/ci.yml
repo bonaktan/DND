@@ -59,6 +59,16 @@ jobs:
           distribution: temurin
           java-version: '25'
 
+      - name: Check tag matches application version
+        if: github.ref_type == 'tag'
+        shell: bash
+        run: |
+          version=$(./gradlew --no-daemon -q :app:printVersion)
+          if [[ "$GITHUB_REF_NAME" != "$version" ]]; then
+            echo "::error::Release tag must match the Gradle application version ($version)."
+            exit 1
+          fi
+
       - name: Run Java lint, formatting checks, and JUnit tests
         run: ./gradlew --no-daemon :app:check
 
