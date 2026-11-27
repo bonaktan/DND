@@ -31,7 +31,7 @@ public final class WorldRenderer implements Disposable {
     }
 
     public void render(WorldCamera camera, float playerX, float playerY) {
-        var view = camera.apply();
+        var view = camera.apply(mapRenderer.tileSize());
         ScreenUtils.clear(Color.BLACK);
         mapRenderer.render(view);
 

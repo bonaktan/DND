@@ -11,6 +11,8 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Graphics;
 import org.lwjgl.glfw.GLFW;
 
 public final class DesktopWindow {
+    private static final int MAX_RENDER_FPS = 60;
+
     private int windowedWidth;
     private int windowedHeight;
 
@@ -18,6 +20,7 @@ public final class DesktopWindow {
         var config = new Lwjgl3ApplicationConfiguration();
         config.setTitle("DND - Alpha");
         config.setFullscreenMode(Lwjgl3ApplicationConfiguration.getDisplayMode());
+        config.setForegroundFPS(MAX_RENDER_FPS);
         config.useVsync(true);
         new Lwjgl3Application(listener, config);
     }
@@ -59,6 +62,7 @@ public final class DesktopWindow {
         }
     }
 
+    // wayland-specific functions, bon uses wayland for devel so syempre may favoritism <3
     private boolean usesWayland() {
         return GLFW.glfwGetPlatform() == GLFW.GLFW_PLATFORM_WAYLAND;
     }

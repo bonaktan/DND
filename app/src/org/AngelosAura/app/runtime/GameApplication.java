@@ -14,9 +14,13 @@ public final class GameApplication extends ApplicationAdapter {
     private static final float MAX_CATCH_UP_SECONDS = 0.25f;
 
     private final DesktopWindow desktopWindow;
+    private final RenderTimeAverage renderTimeAverage = new RenderTimeAverage();
     private WorldRenderer worldRenderer;
     private GameSession gameSession;
     private WorldCamera camera;
+    private DebugPopups debugPopups;
+    private boolean showPerformance;
+    private boolean showEnvironment;
     private float simulationTime;
     private int pendingMoveX;
     private int pendingMoveY;
@@ -30,13 +34,13 @@ public final class GameApplication extends ApplicationAdapter {
         Path assets = resolveAssetsRoot();
         worldRenderer =
                 new WorldRenderer(
-                        assets.resolve("map/TestingMap.tmx"), assets.resolve("textures/cat.png"));
+                        assets.resolve("map/TheVillage.tmx"), assets.resolve("textures/cat.png"));
 
         int columns = worldRenderer.columns();
         int rows = worldRenderer.rows();
         gameSession = new GameSession(columns, rows);
         var player = gameSession.player();
-        camera = new WorldCamera(columns, rows, player.x(), player.y());
+        camera = new WorldCamera(player.x(), player.y(), columns, rows);
         desktopWindow.installFullscreenShortcut();
         Gdx.graphics.requestRendering();
     }
@@ -48,12 +52,50 @@ public final class GameApplication extends ApplicationAdapter {
 
     @Override
     public void render() {
+        updateDebugShortcuts();
+
         float dt = Gdx.graphics.getDeltaTime();
+        long simulationStart = showPerformance ? System.nanoTime() : 0;
         updateMovement(dt);
+        long renderStart = System.nanoTime();
 
         var player = gameSession.player();
         camera.follow(player.x(), player.y(), dt);
         worldRenderer.render(camera, player.x(), player.y());
+        long averageRenderNanos = renderTimeAverage.record(renderStart, System.nanoTime());
+
+        if (showPerformance || showEnvironment) {
+            if (debugPopups == null) {
+                debugPopups = new DebugPopups();
+            }
+            if (showPerformance) {
+                debugPopups.renderPerformance(
+                        Gdx.graphics.getFramesPerSecond(),
+                        averageRenderNanos,
+                        renderStart - simulationStart);
+            }
+            if (showEnvironment) {
+                debugPopups.renderEnvironment(
+                        player.x(),
+                        player.y(),
+                        camera,
+                        worldRenderer.columns(),
+                        worldRenderer.rows(),
+                        showPerformance);
+            }
+        }
+    }
+
+    private void updateDebugShortcuts() {
+        if (Gdx.input.isKeyPressed(Input.Keys.SHIFT_LEFT)
+                || Gdx.input.isKeyPressed(Input.Keys.SHIFT_RIGHT)) {
+            if (Gdx.input.isKeyJustPressed(Input.Keys.F1)) {
+                showPerformance = !showPerformance;
+            }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) {
+                showEnvironment = !showEnvironment;
+            }
+        }
     }
 
     private void updateMovement(float dt) {
@@ -93,6 +135,9 @@ public final class GameApplication extends ApplicationAdapter {
     @Override
     public void dispose() {
         worldRenderer.dispose();
+        if (debugPopups != null) {
+            debugPopups.dispose();
+        }
     }
 
     private static Path resolveAssetsRoot() {

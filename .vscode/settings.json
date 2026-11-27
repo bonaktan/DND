@@ -3,6 +3,7 @@
     "**/.gradle": true,
     "**/.git": true,
     "**/build/": true,
+    "app/bin": true,
     "buildSrc": true,
     "gradle": true,
     "gradle.properties": true,
