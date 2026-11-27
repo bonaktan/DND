@@ -5,29 +5,39 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Graphics.DisplayMode;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputAdapter;
+import com.badlogic.gdx.assets.loaders.resolvers.AbsoluteFileHandleResolver;
+import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Graphics;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.GlyphLayout;
-import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.maps.tiled.TiledMap;
+import com.badlogic.gdx.maps.tiled.TmxMapLoader;
+import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.utils.viewport.FitViewport;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
 import org.lwjgl.glfw.GLFW;
 
 public final class WindowRenderer extends ApplicationAdapter {
-    private static final String MESSAGE = "Hello, world!";
-    private SpriteBatch batch;
-    private BitmapFont font;
-    private GlyphLayout layout;
-    private int width;
-    private int height;
+    private TiledMap map;
     private int windowedWidth;
     private int windowedHeight;
+    private OrthographicCamera camera;
+    private FitViewport viewport;
+    private OrthogonalTiledMapRenderer mapRenderer;
 
     @Override
     public void create() {
-        batch = new SpriteBatch();
-        font = new BitmapFont();
-        layout = new GlyphLayout();
+        Path tmx = resolveAssetsRoot().resolve("map/TestingMap.tmx");
+        map = new TmxMapLoader(new AbsoluteFileHandleResolver()).load(tmx.toString());
+
+        int columns = map.getProperties().get("width", Integer.class);
+        int rows = map.getProperties().get("height", Integer.class);
+
+        camera = new OrthographicCamera();
+        viewport = new FitViewport(columns, rows, camera);
+        mapRenderer = new OrthogonalTiledMapRenderer(map, 1f / 16f);
         windowedWidth = Math.clamp(Gdx.graphics.getWidth() * 4 / 5, 1, 960);
         windowedHeight = Math.clamp(Gdx.graphics.getHeight() * 4 / 5, 1, 720);
         Gdx.input.setInputProcessor(
@@ -37,7 +47,7 @@ public final class WindowRenderer extends ApplicationAdapter {
                         if (keycode != Input.Keys.F11) {
                             return false;
                         }
-                        Gdx.app.postRunnable(HelloWorld.this::toggleFullscreen);
+                        Gdx.app.postRunnable(WindowRenderer.this::toggleFullscreen);
                         return true;
                     }
                 });
@@ -47,20 +57,15 @@ public final class WindowRenderer extends ApplicationAdapter {
 
     @Override
     public void resize(int width, int height) {
-        this.width = width;
-        this.height = height;
-        batch.getProjectionMatrix().setToOrtho2D(0, 0, width, height);
-        font.getData().setScale(Math.max(0.5f, Math.min(width / 640f, height / 480f)));
-        layout.setText(font, MESSAGE);
+        viewport.update(width, height, true);
     }
 
     @Override
     public void render() {
-        // TODO: replace with actual game rendering logic
         ScreenUtils.clear(Color.BLACK);
-        batch.begin();
-        font.draw(batch, layout, (width - layout.width) / 2f, (height + layout.height) / 2f);
-        batch.end();
+        viewport.apply();
+        mapRenderer.setView(camera);
+        mapRenderer.render();
     }
 
     private void toggleFullscreen() {
@@ -111,7 +116,27 @@ public final class WindowRenderer extends ApplicationAdapter {
 
     @Override
     public void dispose() {
-        batch.dispose();
-        font.dispose();
+        mapRenderer.dispose();
+        map.dispose();
+    }
+
+    private static Path resolveAssetsRoot() {
+        String configured = System.getProperty("dnd.assets");
+        if (configured != null) {
+            return Path.of(configured).toAbsolutePath().normalize();
+        }
+
+        try {
+            Path appJar =
+                    Path.of(
+                            WindowRenderer.class
+                                    .getProtectionDomain()
+                                    .getCodeSource()
+                                    .getLocation()
+                                    .toURI());
+            return appJar.getParent().getParent().resolve("assets");
+        } catch (URISyntaxException e) {
+            throw new IllegalStateException("Cannot resolve the installed assets folder", e);
+        }
     }
 }

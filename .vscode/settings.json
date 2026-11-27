@@ -8,5 +8,11 @@
     "gradle.properties": true,
     "gradlew*": true
   },
-  "java.configuration.updateBuildConfiguration": "interactive"
+  "java.configuration.updateBuildConfiguration": "interactive",
+  "java.server.launchMode": "Standard",
+  "java.gradle.buildServer.enabled": "off",
+  "[java]": {
+    "editor.formatOnSave": false,
+    // "editor.semanticHighlighting.enabled": false
+  }
 }
