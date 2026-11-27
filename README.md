@@ -11,7 +11,7 @@ From the project root:
 | Build and run | `./run` | `.\run.bat` |
 | Show help | `./run --help` | `.\run.bat --help` |
 
-Use JDK 25 for development. Gradle pins the compiler and test runtime to Java 25. The `run` command uses the existing build and needs a Java 25 runtime. Build again after changing the source. `-h` also shows help.
+Use JDK 25 for development. Gradle pins the compiler and test runtime to Java 25. The repository launchers apply Spotless formatting to Java sources before building, testing, or running. The `run` command uses the existing build. Build again after changing the source. `-h` also shows help.
 
 On Linux, arguments after `./run run` are passed to the app. On Windows, pass application arguments directly to `app\build\install\app\bin\app.bat`.
 
@@ -23,7 +23,7 @@ The hook runs Spotless on staged Java sources and stages any formatting fixes. I
 
 ## CI and releases
 
-GitHub Actions runs Java compiler linting, Spotless formatting checks, and JUnit tests on pushes to `main` and on pull requests. Run the same checks locally with `./gradlew :app:check` and apply Java formatting with `./gradlew :app:spotlessApply`. CI uses JDK 25.
+GitHub Actions runs Java compiler linting, Spotless formatting checks, and JUnit tests on Ubuntu, Windows, and macOS for pushes to `main`, pull requests, and release tags. Windows and macOS also build the desktop distribution in CI. Run the checks locally with `./gradlew :app:check` and apply Java formatting with `./gradlew :app:spotlessApply`. CI uses JDK 25.
 
 To release, push a new SemVer 2.0.0 tag such as `1.2.3` on a commit already reachable from remote `main`. Use the version as the tag name without a `v` prefix.
 
@@ -33,4 +33,4 @@ git tag -a 1.2.3 origin/main -m "Release 1.2.3"
 git push origin refs/tags/1.2.3
 ```
 
-After verification passes, Actions publishes the desktop distribution as `DND.zip` on the GitHub release. A tag such as `1.2.3-rc.1` publishes a prerelease.
+After verification passes on all three platforms, Actions publishes the Ubuntu-built desktop distribution as `DND.zip` on the GitHub release. A tag such as `1.2.3-rc.1` publishes a prerelease.

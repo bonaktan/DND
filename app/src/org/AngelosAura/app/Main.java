@@ -1,12 +1,11 @@
 package org.AngelosAura.app;
 
-public class Main {
-    /**
-     * Testing
-     *
-     * <p>Testing GH Wiki Integration
-     */
+import org.AngelosAura.app.runtime.DesktopWindow;
+import org.AngelosAura.app.runtime.GameApplication;
+
+public final class Main {
     public static void main() {
-        System.out.println("Hello World!");
+        var window = new DesktopWindow();
+        window.open(new GameApplication(window));
     }
 }

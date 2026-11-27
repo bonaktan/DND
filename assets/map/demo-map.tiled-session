@@ -1,0 +1,72 @@
+{
+    "activeFile": "TheVillage.tmx",
+    "expandedProjectPaths": [
+        "."
+    ],
+    "fileStates": {
+        "": {
+            "scaleInDock": 1
+        },
+        "#Placeholder": {
+            "dynamicWrapping": true
+        },
+        "/mnt/Data/Projects/Programs/DND/assets/textures/TheVillage.tsx": {
+            "scaleInDock": 1,
+            "scaleInEditor": 4
+        },
+        "Placeholder.tsx": {
+            "dynamicWrapping": true,
+            "scaleInDock": 1,
+            "scaleInEditor": 5.5
+        },
+        "Placeholder2.tsx": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 45
+        },
+        "PlaceholderTextures.tsx": {
+            "dynamicWrapping": true,
+            "scaleInDock": 5.5,
+            "scaleInEditor": 23
+        },
+        "TestingMap": {
+            "scale": 1,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 185,
+                "y": 231
+            }
+        },
+        "TestingMap.tmx": {
+            "scale": 1.5,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 264,
+                "y": 440
+            }
+        },
+        "TheVillage.tmx": {
+            "scale": 0.25,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 1164,
+                "y": 1010
+            }
+        }
+    },
+    "openFiles": [
+        "PlaceholderTextures.tsx",
+        "TestingMap.tmx",
+        "/mnt/Data/Projects/Programs/DND/assets/textures/TheVillage.tsx",
+        "TheVillage.tmx"
+    ],
+    "recentFiles": [
+        "PlaceholderTextures.tsx",
+        "TestingMap.tmx",
+        "/mnt/Data/Projects/Programs/DND/assets/textures/TheVillage.tsx",
+        "TheVillage.tmx",
+        "Placeholder2.tsx",
+        "Placeholder.tsx",
+        "TestingMap"
+    ]
+}

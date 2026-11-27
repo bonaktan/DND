@@ -29,7 +29,10 @@ setup_pre_commit() {
 }
 
 case "${1-}" in
-    ''|build|test|run) setup_pre_commit ;;
+    ''|build|test|run)
+        setup_pre_commit
+        ./gradlew :app:spotlessApply || exit $?
+        ;;
 esac
 
 if [ "$#" -eq 0 ]; then
