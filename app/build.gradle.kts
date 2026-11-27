@@ -12,7 +12,7 @@ plugins {
     id("com.diffplug.spotless") version "8.12.0"
 }
 
-version = "0.1.1"
+version = "0.1.2-alpha.1"
 
 tasks.register("printVersion") {
     val applicationVersion = project.version.toString()

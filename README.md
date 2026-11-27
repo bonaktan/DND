@@ -23,7 +23,7 @@ The hook runs Spotless on staged Java sources and stages any formatting fixes. I
 
 ## CI and releases
 
-GitHub Actions runs Java compiler linting, Spotless formatting checks, and JUnit tests on Ubuntu, Windows, and macOS for pushes to `main`, pull requests, and release tags. Windows and macOS also build the desktop distribution in CI. Run the checks locally with `./gradlew :app:check` and apply Java formatting with `./gradlew :app:spotlessApply`. CI uses JDK 25.
+GitHub Actions runs Java compiler linting, Spotless formatting checks, and JUnit tests on Ubuntu for pushes to `main`, pull requests, and release tags. After the Ubuntu job succeeds, the Windows and macOS jobs run the same checks and build the desktop distribution. Run the checks locally with `./gradlew :app:check` and apply Java formatting with `./gradlew :app:spotlessApply`. CI uses JDK 25.
 
 To release, set `version` in `app/build.gradle.kts` to a SemVer 2.0.0 version and commit it to `main`. Push a matching tag without a `v` prefix on a commit already reachable from remote `main`. CI rejects tags that do not match the Gradle version. For example, if the version is `1.2.3`:
 
@@ -33,4 +33,4 @@ git tag -a 1.2.3 origin/main -m "Release 1.2.3"
 git push origin refs/tags/1.2.3
 ```
 
-After verification passes on all three platforms, Actions publishes the Ubuntu-built desktop distribution as `DND.zip` on the GitHub release. A tag such as `1.2.3-rc.1` publishes a prerelease.
+If CI already passed on `main` for the exact tagged commit, the release reuses that result. Otherwise, the tag runs verification on all three platforms. Actions packages and publishes the desktop distribution as `DND.zip` on the GitHub release. A tag such as `1.2.3-rc.1` publishes a prerelease.

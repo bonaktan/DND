@@ -17,9 +17,13 @@ jobs:
       (github.ref_type == 'branch' && github.event.deleted == false) ||
       (github.ref_type == 'tag' && github.event.created == true)
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     outputs:
       release-commit: ${{ steps.tag.outputs.commit }}
       prerelease: ${{ steps.tag.outputs.prerelease }}
+      reuse-ci: ${{ steps.prior-ci.outputs.passed }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -69,7 +73,25 @@ jobs:
             exit 1
           fi
 
+      - name: Look for successful CI on the tagged commit
+        if: github.ref_type == 'tag'
+        id: prior-ci
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAGGED_COMMIT: ${{ steps.tag.outputs.commit }}
+        run: |
+          if ! run_url=$(gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" \
+            -f branch=main -f event=push -f status=success -f head_sha="$TAGGED_COMMIT" \
+            -F per_page=1 --jq '.workflow_runs[0].html_url // empty'); then
+            echo "::warning::Could not look up prior CI. Running all checks."
+          elif [[ -n "$run_url" ]]; then
+            echo "Reusing successful CI: $run_url"
+            echo "passed=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Run Java lint, formatting checks, and JUnit tests
+        if: steps.prior-ci.outputs.passed != 'true'
         run: ./gradlew --no-daemon :app:check
 
       - name: Generate Javadoc
@@ -103,10 +125,8 @@ jobs:
 
   verify-desktop:
     name: Build and test (${{ matrix.os }})
-    if: >-
-      github.event_name == 'pull_request' ||
-      (github.ref_type == 'branch' && github.event.deleted == false) ||
-      (github.ref_type == 'tag' && github.event.created == true)
+    needs: verify
+    if: needs.verify.outputs.reuse-ci != 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -185,7 +205,12 @@ jobs:
   release:
     name: Publish GitHub release
     needs: [verify, verify-desktop]
-    if: github.event_name == 'push' && github.ref_type == 'tag' && needs.verify.outputs.release-commit != ''
+    if: >-
+      !cancelled() &&
+      github.event_name == 'push' && github.ref_type == 'tag' &&
+      needs.verify.result == 'success' && needs.verify.outputs.release-commit != '' &&
+      (needs.verify-desktop.result == 'success' ||
+       (needs.verify-desktop.result == 'skipped' && needs.verify.outputs.reuse-ci == 'true'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
