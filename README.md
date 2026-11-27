@@ -11,7 +11,7 @@ From the project root:
 | Build and run | `./run` | `.\run.bat` |
 | Show help | `./run --help` | `.\run.bat --help` |
 
-Use JDK 25 for development. Gradle pins the compiler and test runtime to Java 25. The `run` command uses the existing build and needs a Java 25 runtime. Build again after changing the source. `-h` also shows help.
+Use JDK 25 for development. Gradle pins the compiler and test runtime to Java 25. The repository launchers apply Spotless formatting to Java sources before building, testing, or running. The `run` command uses the existing build. Build again after changing the source. `-h` also shows help.
 
 On Linux, arguments after `./run run` are passed to the app. On Windows, pass application arguments directly to `app\build\install\app\bin\app.bat`.
 
