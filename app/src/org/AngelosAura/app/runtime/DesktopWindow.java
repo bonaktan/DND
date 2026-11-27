@@ -1,5 +1,7 @@
 package org.AngelosAura.app.runtime;
 
+import static org.AngelosAura.app.GameTuning.Setting.RENDER_FPS;
+
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Graphics.DisplayMode;
@@ -11,8 +13,6 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Graphics;
 import org.lwjgl.glfw.GLFW;
 
 public final class DesktopWindow {
-    private static final int MAX_RENDER_FPS = 60;
-
     private int windowedWidth;
     private int windowedHeight;
 
@@ -20,7 +20,7 @@ public final class DesktopWindow {
         var config = new Lwjgl3ApplicationConfiguration();
         config.setTitle("DND - Alpha");
         config.setFullscreenMode(Lwjgl3ApplicationConfiguration.getDisplayMode());
-        config.setForegroundFPS(MAX_RENDER_FPS);
+        config.setForegroundFPS(RENDER_FPS.defaultValue());
         config.useVsync(true);
         new Lwjgl3Application(listener, config);
     }

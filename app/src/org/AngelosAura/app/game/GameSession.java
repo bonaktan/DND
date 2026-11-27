@@ -1,21 +1,28 @@
 package org.AngelosAura.app.game;
 
+import static org.AngelosAura.app.GameTuning.Setting.PLAYER_ACCELERATION;
+import static org.AngelosAura.app.GameTuning.Setting.PLAYER_DECELERATION;
+import static org.AngelosAura.app.GameTuning.Setting.PLAYER_SPEED;
+
+import org.AngelosAura.app.GameTuning;
 import org.AngelosAura.app.game.mob.Player;
 
 public final class GameSession {
-    private static final float PLAYER_SPEED = 5f;
-    private static final float PLAYER_ACCELERATION = 25f;
-    private static final float PLAYER_DECELERATION = 30f;
-
     private final int columns;
     private final int rows;
+    private final GameTuning tuning;
     private final Mob player;
     private float velocityX;
     private float velocityY;
 
     public GameSession(int columns, int rows) {
+        this(columns, rows, new GameTuning());
+    }
+
+    public GameSession(int columns, int rows, GameTuning tuning) {
         this.columns = columns;
         this.rows = rows;
+        this.tuning = tuning;
         player = new Player(columns / 2, rows / 2);
     }
 
@@ -25,10 +32,10 @@ public final class GameSession {
 
     public void movePlayer(int dx, int dy, float seconds) {
         float inputLength = (float) Math.hypot(dx, dy);
-        float speedPerInput = PLAYER_SPEED / Math.max(1f, inputLength);
+        float speedPerInput = tuning.get(PLAYER_SPEED) / Math.max(1f, inputLength);
         float targetX = dx * speedPerInput;
         float targetY = dy * speedPerInput;
-        float rate = inputLength > 0f ? PLAYER_ACCELERATION : PLAYER_DECELERATION;
+        float rate = tuning.get(inputLength > 0f ? PLAYER_ACCELERATION : PLAYER_DECELERATION);
         float timeToTarget = (float) Math.hypot(targetX - velocityX, targetY - velocityY) / rate;
         float rampTime = Math.min(seconds, timeToTarget);
         float nextVelocityX = targetX;

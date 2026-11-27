@@ -1,41 +1,55 @@
 package org.AngelosAura.app.presentation.world;
 
+import static org.AngelosAura.app.GameTuning.Setting.CAMERA_EASING_POWER;
+import static org.AngelosAura.app.GameTuning.Setting.CAMERA_FOLLOW_MILLIS;
+import static org.AngelosAura.app.GameTuning.Setting.CAMERA_PADDING_PERCENT;
+import static org.AngelosAura.app.GameTuning.Setting.CAMERA_VIEW_COLUMNS;
+import static org.AngelosAura.app.GameTuning.Setting.CAMERA_VIEW_ROWS;
+
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.math.Interpolation;
+import com.badlogic.gdx.graphics.glutils.HdpiUtils;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.utils.viewport.FitViewport;
+import org.AngelosAura.app.GameTuning;
 
 public final class WorldCamera {
-    private static final int VIEW_COLUMNS = 45;
-    private static final int VIEW_ROWS = 30;
-    private static final float EDGE_PADDING_FRACTION = 0.05f;
     private static final float TILE_CENTER_OFFSET = 0.5f;
-    private static final float FOLLOW_DURATION_SECONDS = 0.5f;
-    private static final Interpolation FOLLOW_EASING = new Interpolation.PowOut(2);
+    private static final float MILLIS_PER_SECOND = 1000f;
+    private static final float PERCENT_PER_WHOLE = 100f;
 
     private final OrthographicCamera camera;
-    private final FitViewport viewport;
     private final int mapColumns;
     private final int mapRows;
+    private final GameTuning tuning;
     private final Vector2 followPosition;
     private final Vector2 followTarget;
-    private final Vector2 followStart = new Vector2();
-    private float followElapsedSeconds = FOLLOW_DURATION_SECONDS;
+    private double screenAspectRatio;
+    private float followProgress = 1f;
 
     public WorldCamera(float targetX, float targetY, int mapColumns, int mapRows) {
+        this(targetX, targetY, mapColumns, mapRows, new GameTuning());
+    }
+
+    public WorldCamera(
+            float targetX, float targetY, int mapColumns, int mapRows, GameTuning tuning) {
         camera = new OrthographicCamera();
         this.mapColumns = mapColumns;
         this.mapRows = mapRows;
+        this.tuning = tuning;
+        updateViewSize();
+        int padding = tuning.get(CAMERA_PADDING_PERCENT);
         followPosition =
                 new Vector2(
-                        boundedCenter(targetX, VIEW_COLUMNS, mapColumns),
-                        boundedCenter(targetY, VIEW_ROWS, mapRows));
+                        boundedCenter(targetX, viewColumns(), mapColumns, padding),
+                        boundedCenter(targetY, viewRows(), mapRows, padding));
         followTarget = new Vector2(followPosition);
-        viewport = new FitViewport(VIEW_COLUMNS, VIEW_ROWS, camera);
     }
 
     public void resize(int width, int height) {
-        viewport.update(width, height, false);
+        if (width > 0 && height > 0) {
+            screenAspectRatio = (double) width / height;
+            updateViewSize();
+        }
     }
 
     public float x() {
@@ -46,43 +60,55 @@ public final class WorldCamera {
         return camera.position.y;
     }
 
-    public int viewColumns() {
-        return VIEW_COLUMNS;
+    public float viewColumns() {
+        return camera.viewportWidth;
     }
 
-    public int viewRows() {
-        return VIEW_ROWS;
+    public float viewRows() {
+        return camera.viewportHeight;
     }
 
     public void follow(float targetX, float targetY, float seconds) {
-        float centerX = boundedCenter(targetX, VIEW_COLUMNS, mapColumns);
-        float centerY = boundedCenter(targetY, VIEW_ROWS, mapRows);
+        updateViewSize();
+        int padding = tuning.get(CAMERA_PADDING_PERCENT);
+        float centerX = boundedCenter(targetX, viewColumns(), mapColumns, padding);
+        float centerY = boundedCenter(targetY, viewRows(), mapRows, padding);
         if (centerX != followTarget.x || centerY != followTarget.y) {
-            followStart.set(followPosition);
             followTarget.set(centerX, centerY);
-            followElapsedSeconds = 0f;
+            followProgress = 0f;
         }
-        if (followElapsedSeconds == FOLLOW_DURATION_SECONDS) {
+        if (followProgress == 1f) {
             return;
         }
 
-        followElapsedSeconds = Math.min(followElapsedSeconds + seconds, FOLLOW_DURATION_SECONDS);
-        followPosition
-                .set(followStart)
-                .interpolate(
-                        followTarget,
-                        followElapsedSeconds / FOLLOW_DURATION_SECONDS,
-                        FOLLOW_EASING);
+        float durationSeconds = tuning.get(CAMERA_FOLLOW_MILLIS) / MILLIS_PER_SECOND;
+        float nextProgress = Math.min(followProgress + seconds / durationSeconds, 1f);
+        float remainingRatio = (1f - nextProgress) / (1f - followProgress);
+        // Apply the ease-out to the remaining distance so live changes never rewind the camera.
+        float fraction = 1f - (float) Math.pow(remainingRatio, tuning.get(CAMERA_EASING_POWER));
+        followPosition.lerp(followTarget, fraction);
+        followProgress = nextProgress;
     }
 
     OrthographicCamera apply(int tileSize) {
         camera.position.set(snap(followPosition.x, tileSize), snap(followPosition.y, tileSize), 0f);
-        viewport.apply();
+        HdpiUtils.glViewport(0, 0, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
+        camera.update();
         return camera;
     }
 
-    static float boundedCenter(float target, int viewSize, int mapSize) {
-        float inset = Math.min(mapSize / 2f, viewSize * (0.5f - EDGE_PADDING_FRACTION));
+    private void updateViewSize() {
+        int minColumns = tuning.get(CAMERA_VIEW_COLUMNS);
+        int minRows = tuning.get(CAMERA_VIEW_ROWS);
+        double aspectRatio =
+                screenAspectRatio > 0 ? screenAspectRatio : (double) minColumns / minRows;
+        camera.viewportWidth = Math.max(minColumns, (float) (minRows * aspectRatio));
+        camera.viewportHeight = Math.max(minRows, (float) (minColumns / aspectRatio));
+    }
+
+    static float boundedCenter(float target, float viewSize, int mapSize, int paddingPercent) {
+        float inset =
+                Math.min(mapSize / 2f, viewSize * (0.5f - paddingPercent / PERCENT_PER_WHOLE));
         return Math.clamp(target + TILE_CENTER_OFFSET, inset, mapSize - inset);
     }
 

@@ -1,12 +1,31 @@
 package org.AngelosAura.app.game;
 
+import static org.AngelosAura.app.GameTuning.Setting.PLAYER_SPEED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.AngelosAura.app.GameTuning;
 import org.AngelosAura.app.game.mob.Player;
 import org.junit.jupiter.api.Test;
 
 class GameSessionTest {
+    @Test
+    void aRunningSessionUsesTheAdjustedPlayerSpeed() {
+        var tuning = new GameTuning();
+        var tuned = new GameSession(100, 100, tuning);
+        var baseline = new GameSession(100, 100);
+        tuned.movePlayer(1, 0, 0.25f);
+        baseline.movePlayer(1, 0, 0.25f);
+        assertEquals(baseline.player().x(), tuned.player().x());
+
+        tuning.adjust(PLAYER_SPEED, 1);
+        tuned.movePlayer(1, 0, 1f);
+        baseline.movePlayer(1, 0, 1f);
+
+        assertTrue(tuned.player().x() > baseline.player().x());
+    }
+
     @Test
     void spawnsPlayerMobAtMapCenter() {
         var session = new GameSession(31, 21);

@@ -1,10 +1,13 @@
 package org.AngelosAura.app.runtime;
 
+import static org.AngelosAura.app.GameTuning.Setting.RENDER_FPS;
+
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
+import org.AngelosAura.app.GameTuning;
 import org.AngelosAura.app.game.GameSession;
 import org.AngelosAura.app.presentation.world.WorldCamera;
 import org.AngelosAura.app.presentation.world.WorldRenderer;
@@ -14,6 +17,7 @@ public final class GameApplication extends ApplicationAdapter {
     private static final float MAX_CATCH_UP_SECONDS = 0.25f;
 
     private final DesktopWindow desktopWindow;
+    private final GameTuning tuning = new GameTuning();
     private final RenderTimeAverage renderTimeAverage = new RenderTimeAverage();
     private WorldRenderer worldRenderer;
     private GameSession gameSession;
@@ -21,6 +25,8 @@ public final class GameApplication extends ApplicationAdapter {
     private DebugPopups debugPopups;
     private boolean showPerformance;
     private boolean showEnvironment;
+    private boolean showTuning;
+    private int selectedTuningIndex;
     private float simulationTime;
     private int pendingMoveX;
     private int pendingMoveY;
@@ -38,9 +44,9 @@ public final class GameApplication extends ApplicationAdapter {
 
         int columns = worldRenderer.columns();
         int rows = worldRenderer.rows();
-        gameSession = new GameSession(columns, rows);
+        gameSession = new GameSession(columns, rows, tuning);
         var player = gameSession.player();
-        camera = new WorldCamera(player.x(), player.y(), columns, rows);
+        camera = new WorldCamera(player.x(), player.y(), columns, rows, tuning);
         desktopWindow.installFullscreenShortcut();
         Gdx.graphics.requestRendering();
     }
@@ -53,6 +59,9 @@ public final class GameApplication extends ApplicationAdapter {
     @Override
     public void render() {
         updateDebugShortcuts();
+        if (showTuning) {
+            updateTuningControls();
+        }
 
         float dt = Gdx.graphics.getDeltaTime();
         long simulationStart = showPerformance ? System.nanoTime() : 0;
@@ -64,7 +73,7 @@ public final class GameApplication extends ApplicationAdapter {
         worldRenderer.render(camera, player.x(), player.y());
         long averageRenderNanos = renderTimeAverage.record(renderStart, System.nanoTime());
 
-        if (showPerformance || showEnvironment) {
+        if (showPerformance || showEnvironment || showTuning) {
             if (debugPopups == null) {
                 debugPopups = new DebugPopups();
             }
@@ -83,6 +92,10 @@ public final class GameApplication extends ApplicationAdapter {
                         worldRenderer.rows(),
                         showPerformance);
             }
+            if (showTuning) {
+                debugPopups.renderTuning(
+                        tuning, selectedTuningIndex, showPerformance, showEnvironment);
+            }
         }
     }
 
@@ -95,6 +108,33 @@ public final class GameApplication extends ApplicationAdapter {
             if (Gdx.input.isKeyJustPressed(Input.Keys.F2)) {
                 showEnvironment = !showEnvironment;
             }
+            if (Gdx.input.isKeyJustPressed(Input.Keys.F3)) {
+                showTuning = !showTuning;
+            }
+        }
+    }
+
+    private void updateTuningControls() {
+        int selectionDelta =
+                (Gdx.input.isKeyJustPressed(Input.Keys.PAGE_DOWN) ? 1 : 0)
+                        - (Gdx.input.isKeyJustPressed(Input.Keys.PAGE_UP) ? 1 : 0);
+        selectedTuningIndex =
+                Math.floorMod(selectedTuningIndex + selectionDelta, GameTuning.SETTINGS.size());
+        var setting = GameTuning.SETTINGS.get(selectedTuningIndex);
+        int previousFps = tuning.get(RENDER_FPS);
+
+        int adjustment =
+                (Gdx.input.isKeyJustPressed(Input.Keys.EQUALS) ? 1 : 0)
+                        - (Gdx.input.isKeyJustPressed(Input.Keys.MINUS) ? 1 : 0);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.BACKSPACE)) {
+            tuning.reset(setting);
+        } else if (adjustment != 0) {
+            tuning.adjust(setting, adjustment);
+        }
+
+        int renderFps = tuning.get(RENDER_FPS);
+        if (renderFps != previousFps) {
+            Gdx.graphics.setForegroundFPS(renderFps);
         }
     }
 

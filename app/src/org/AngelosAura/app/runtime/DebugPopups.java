@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.HdpiUtils;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.Disposable;
+import org.AngelosAura.app.GameTuning;
 import org.AngelosAura.app.presentation.world.WorldCamera;
 
 final class DebugPopups implements Disposable {
@@ -59,6 +60,42 @@ final class DebugPopups implements Disposable {
         renderPanel(
                 belowPerformance ? PERFORMANCE_PANEL_HEIGHT + PANEL_GAP : 0,
                 ENVIRONMENT_PANEL_HEIGHT);
+    }
+
+    void renderTuning(
+            GameTuning tuning,
+            int selectedIndex,
+            boolean belowPerformance,
+            boolean belowEnvironment) {
+        int topOffset =
+                (belowPerformance ? PERFORMANCE_PANEL_HEIGHT + PANEL_GAP : 0)
+                        + (belowEnvironment ? ENVIRONMENT_PANEL_HEIGHT + PANEL_GAP : 0);
+        var settings = GameTuning.SETTINGS;
+        int availableHeight = Gdx.graphics.getHeight() - topOffset - 2 * SCREEN_MARGIN;
+        float firstLineHeight = font.getCapHeight() + 2 * PANEL_PADDING;
+        int visibleRows =
+                Math.clamp(
+                        (int) ((availableHeight - firstLineHeight) / font.getLineHeight()) - 1,
+                        1,
+                        settings.size());
+        int firstRow = Math.max(0, selectedIndex + 1 - visibleRows);
+
+        text.setLength(0);
+        text.append("Magic values (")
+                .append(selectedIndex + 1)
+                .append('/')
+                .append(settings.size())
+                .append(")\nPgUp/PgDn select | -/= adjust | Backspace reset");
+        for (int row = firstRow; row < firstRow + visibleRows; row++) {
+            var setting = settings.get(row);
+            text.append(row == selectedIndex ? "\n> " : "\n  ")
+                    .append(setting.label())
+                    .append(": ")
+                    .append(tuning.get(setting));
+        }
+        int panelHeight =
+                (int) Math.ceil(firstLineHeight + (visibleRows + 1) * font.getLineHeight());
+        renderPanel(topOffset, panelHeight);
     }
 
     private void renderPanel(int topOffset, int panelHeight) {
