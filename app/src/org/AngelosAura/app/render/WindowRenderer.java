@@ -10,9 +10,11 @@ import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Graphics;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import java.net.URISyntaxException;
@@ -26,16 +28,25 @@ public final class WindowRenderer extends ApplicationAdapter {
     private OrthographicCamera camera;
     private FitViewport viewport;
     private OrthogonalTiledMapRenderer mapRenderer;
+    private Texture playerTexture;
+    private float playerX;
+    private float playerY;
+    private int columns;
+    private int rows;
 
     @Override
     public void create() {
         Path tmx = resolveAssetsRoot().resolve("map/TestingMap.tmx");
         map = new TmxMapLoader(new AbsoluteFileHandleResolver()).load(tmx.toString());
 
-        int columns = map.getProperties().get("width", Integer.class);
-        int rows = map.getProperties().get("height", Integer.class);
-
+        columns = map.getProperties().get("width", Integer.class);
+        rows = map.getProperties().get("height", Integer.class);
+        playerX = columns / 2;
+        playerY = rows / 2;
+        Path cat = resolveAssetsRoot().resolve("textures/cat.png");
+        playerTexture = new Texture(Gdx.files.absolute(cat.toString()));
         camera = new OrthographicCamera();
+        camera.position.set(playerX + 0.5f, playerY + 0.5f, 0f);
         viewport = new FitViewport(columns, rows, camera);
         mapRenderer = new OrthogonalTiledMapRenderer(map, 1f / 16f);
         windowedWidth = Math.clamp(Gdx.graphics.getWidth() * 4 / 5, 1, 960);
@@ -51,21 +62,57 @@ public final class WindowRenderer extends ApplicationAdapter {
                         return true;
                     }
                 });
-        Gdx.graphics.setContinuousRendering(false);
         Gdx.graphics.requestRendering();
     }
 
     @Override
     public void resize(int width, int height) {
-        viewport.update(width, height, true);
+        viewport.update(width, height, false);
     }
 
     @Override
     public void render() {
         ScreenUtils.clear(Color.BLACK);
+        int dx = 0;
+        int dy = 0;
+        if (Gdx.input.isKeyPressed(Input.Keys.D) || Gdx.input.isKeyPressed(Input.Keys.RIGHT)) {
+            dx++;
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.A) || Gdx.input.isKeyPressed(Input.Keys.LEFT)) {
+            dx--;
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.W) || Gdx.input.isKeyPressed(Input.Keys.UP)) {
+            dy++;
+        }
+        if (Gdx.input.isKeyPressed(Input.Keys.S) || Gdx.input.isKeyPressed(Input.Keys.DOWN)) {
+            dy--;
+        }
+        float dt = Gdx.graphics.getDeltaTime();
+        float step = 5f * dt; // 5 tiles per second
+        if (dx != 0 && dy != 0) {
+            step /= (float) Math.sqrt(2);
+        }
+
+        playerX = Math.clamp(playerX + dx * step, 0f, columns - 1f);
+        playerY = Math.clamp(playerY + dy * step, 0f, rows - 1f);
+
+        updateCamera(dt);
         viewport.apply();
         mapRenderer.setView(camera);
         mapRenderer.render();
+
+        var batch = mapRenderer.getBatch();
+        batch.begin();
+        batch.draw(playerTexture, playerX, playerY, 1f, 1f);
+        batch.end();
+    }
+
+    private void updateCamera(float dt) {
+        float offsetX = playerX + 0.5f - camera.position.x;
+        float offsetY = playerY + 0.5f - camera.position.y;
+        float distance = Vector2.len(offsetX, offsetY);
+        float fraction = distance < 0.01f ? 1f : 1f - (float) Math.exp(-4f * dt);
+        camera.position.add(offsetX * fraction, offsetY * fraction, 0f);
     }
 
     private void toggleFullscreen() {
@@ -118,6 +165,7 @@ public final class WindowRenderer extends ApplicationAdapter {
     public void dispose() {
         mapRenderer.dispose();
         map.dispose();
+        playerTexture.dispose();
     }
 
     private static Path resolveAssetsRoot() {
